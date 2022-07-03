@@ -1,0 +1,41 @@
+import tensorflow as tf
+from tensorflow.keras import layers,Model,Sequential,applications
+
+class Transfer_Learing(Model):
+    def __init__(self, IMG_SHAPE):
+        INPUT_SHAPE =  IMG_SHAPE + (3,)
+        super(Transfer_Learing, self).__init__()
+        self.augmentation_layer = Sequential([layers.experimental.preprocessing.RandomFlip('horizontal'),
+                                  layers.experimental.preprocessing.RandomRotation(0.2)])
+        self.resize_layer = layers.experimental.preprocessing.Rescaling(1./127.,offset=-0.5)
+        self.base_model_layer = applications.MobileNetV2(input_shape = INPUT_SHAPE,
+                                                   include_top = False,
+                                                   weights= 'imagenet')
+        # 全部冻结
+        self.base_model_layer.trainable = False
+        fine_tune_at = 100
+        # 冻结底层的100层，释放顶层的54层
+        for layer in self.base_model_layer.layers[:fine_tune_at]:
+            layer.trainable = False
+
+        print("Number of layers in the base_model: ", len(self.base_model_layer.layers))
+        self.ga_layer = layers.GlobalAveragePooling2D()
+        self.prediction_layer = layers.Dense(1,dtype=tf.float32)
+
+    def call(self, inputs, trainning = None):
+        x = self.augmentation_layer(inputs)
+        x = self.resize_layer(x)
+        x = self.base_model_layer(x)
+        x = self.ga_layer(x)
+        x = layers.Dropout(0.2)(x)
+        out = self.prediction_layer(x)
+        return out
+
+base_model = tf.keras.applications.VGG16(weights='imagenet')
+base_model.summary()
+# base_model1 = applications.EfficientNetB5(weights='in')
+ba = applications.MobileNetV3Small(weights='imagenet')
+baa = applications.ResNet50(weights = 'imagenet')
+
+def MobileNetV2(IMG_SHAPE):
+    return Transfer_Learing(IMG_SHAPE)
