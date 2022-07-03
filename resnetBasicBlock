@@ -1,0 +1,40 @@
+'''
+深度残差网络：ResNET
+直觉：网络深度增加时，结果也更好更准确
+事实：很深也不行
+原因：梯度离散：最后几层的权重可以很好的更新，但最开始那几层由于梯度非常小更新缓慢
+     梯度爆炸：
+降低目标：假设我们设计一个30层的网络，我们只要求该网络比22层好一点就行，允许它最差的情况与22层的结果一致
+'''
+
+import tensorflow as tf
+from tensorflow.keras import layers,Sequential
+class BasicBlock(layers.Layer):
+    def __init__(self, filter_num, stride = 1):
+        super(BasicBlock, self).__init__()
+        # 为什么这里不用Sequential，其实可以
+        self.conv1 = layers.Conv2D(filter_num,(3,3), strides=stride, padding='same')
+        self.bn1 = layers.BatchNormalization()
+        self.relu = layers.Activation('relu')
+        self.conv2 = layers.Conv2D(filter_num, (3, 3), strides=1, padding='same') # 第二个卷积核的步长一定是1，与第一层输出结果的shape保持一致
+        self.bn2 = layers.BatchNormalization()
+        # 如果stride不是1，那么卷积层与输入的shape就不一样了，这里把输入的shape、调整为输出的shape，即进行一次down sampling
+        # 虽然这里称为下采样，但并不是真正的pooling层，而是一个卷积层
+        if stride != 1:
+            self.downsample = Sequential()
+            self.downsample.add(layers.Conv2D(filter_num, (1,1), strides = stride))
+            self.downsample.add(layers.BatchNormalization())
+        else :
+            self.downsample = lambda x:x
+
+
+        def call(self, inputs, training = None):
+            identity = self.downsample(inputs)
+            conv1 = self.conv1(inputs)
+            bn1 = self.bn1(conv1)
+            relu1 = self.relu(bn1)
+            conv2 = self.conv2(relu1)
+            bn2 = self.bn2(conv2)
+            add = layers.add([bn2,identity])
+            out = tf.nn.relu(add)
+            return out
