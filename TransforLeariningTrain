@@ -1,0 +1,77 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+import tensorflow as tf
+from tensorflow.keras import layers,Model,Sequential,applications
+# import TF27TransforLearningClass
+
+os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
+
+from tensorflow.keras.preprocessing import image_dataset_from_directory
+
+_URL = 'https://storage.googleapis.com/mledu-datasets/cats_and_dogs_filtered.zip'
+path_to_zip = tf.keras.utils.get_file('cats_and_dogs.zip', origin=_URL, extract=True)
+PATH = os.path.join(os.path.dirname(path_to_zip), 'cats_and_dogs_filtered')
+
+train_dir = os.path.join(PATH, 'train')
+validation_dir = os.path.join(PATH, 'validation')
+
+BATCH_SIZE = 32
+IMG_SIZE = (160, 160)
+
+data_train = image_dataset_from_directory(train_dir,
+                                          shuffle=True,
+                                          batch_size=BATCH_SIZE,
+                                          image_size=IMG_SIZE)
+data_val = image_dataset_from_directory(validation_dir,
+                                        shuffle=True,
+                                        batch_size=BATCH_SIZE,
+                                        image_size=IMG_SIZE)
+
+# class_name = data_train.class_names
+# plt.figure(figsize=(10, 10))
+# for images, labels in data_train.take(1):
+#     for i in range(9):
+#         ax = plt.subplot(3,3,i+1)
+#         print(images[i].numpy().shape)
+#         plt.imshow(images[i].numpy().astype("uint8"))
+#         plt.title(class_name[labels[i]])
+#         plt.axis("off")
+# plt.show()
+train_batches = tf.data.experimental.cardinality(data_val)
+print(train_batches)
+val_batches = tf.data.experimental.cardinality(data_val)
+print(val_batches)
+print(val_batches // 5)
+data_test = data_val.take(val_batches // 5)
+validation_dataset = data_val.skip(val_batches // 5)
+
+AUTOTUNE = tf.data.AUTOTUNE
+data_train = data_train.prefetch(buffer_size=AUTOTUNE)
+data_val = data_val.prefetch(buffer_size=AUTOTUNE)
+ata_test = data_test.prefetch(buffer_size=AUTOTUNE)
+
+# 实例化
+# model = TF27TransforLearningClass.MobileNetV2(IMG_SIZE)
+# model.build(input_shape=(None, 160, 160,3))
+#
+# base_learning_rate = 0.0001
+# model.compile(optimizer=tf.keras.optimizers.Adam(lr=base_learning_rate),
+#               loss=tf.keras.losses.BinaryCrossentropy(from_logits = True),
+#               metrics=['accuracy'])
+# model.summary()
+# print("Number of layers in the model: ", len(model.layers))
+# model2 = applications.ResNet50(input_shape = (224,224,3),
+#                               weights= 'imagenet')
+#
+# model2.build(input_shape =  (None,224, 224, 3))
+# model2.summary()
+'''
+使用预训练模型进行特征提取：
+1、使用小型数据集时，常见做法是利用基于相同域中的较大数据集训练的模型所学习的特征。
+2、实例化预训练模型并在顶部添加一个全连接分类器。
+3、预训练模型处于“冻结状态”，训练过程中仅更新分类器的权重。卷积基提取了与每个图像关联的所有特征，而您刚刚训练了一个根据给定的提取特征集确定图像类的分类器。
+4、为了进一步提高性能，可能需要通过微调将预训练模型的顶层重新用于新的数据集。
+在本例中，您调整了权重，以使模型学习特定于数据集的高级特征。
+当训练数据集较大且与训练预训练模型所使用的原始数据集非常相似时，通常建议使用这种技术。
+'''
